@@ -1,0 +1,130 @@
+/*
+	This is set to duplicate "SnazzyCorners" and "SpiffyCorners", but it's made so that Javascript
+	alters the Html to inject the proper markup like "NiftyCube"; this injects the CSS too.
+	The border applied to the container (className) elements will be moved to affect a rounded border.
+	The H6 (heading element) is optional; the DIV (body element) is not.
+	
+		
+	Example:
+		Html:  <div class="rounded"><h6>Heading</h6><div>Body text</div></div>
+		Javascript: RoundCorners("rounded");
+
+	className (string; required): A css class-name which will target the elements to affect.
+	tl (bool; default=true): If true, the Top Left corner will be rounded.
+	tr (bool; default=true): If true, the Top Right corner will be rounded.
+	bl (bool; default=true): If true, the Bottom Left corner will be rounded.
+	br (bool; default=true): If true, the Bottom Right corner will be rounded.
+*/
+function RoundCorners(className, tl, tr, bl, br)
+{
+	// Simple helper-function to fetch nodes in the DOM tree by the "class"; exact-match only.
+	function getElementsByClassName(className)
+	{
+		var result = new Array();
+		var elements = document.getElementsByTagName("*") || document.all; 
+		for (var idx = 0; idx < elements.length; ++idx)
+			if (elements[idx].className == className)
+				result[result.length] = elements[idx];
+		return result;
+	}
+	// Can't just use first/lastChild because of #text nodes in some browsers.
+	function getFirstChild(node, tagName) 
+	{
+		for (var idx = 0; idx < node.childNodes.length; ++idx)
+			if (node.childNodes.item(idx).nodeName == tagName)
+				return node.childNodes.item(idx);
+	}
+	// Fetch the _used_ style for the element.
+	function getStyle(node, propName)
+	{
+		if (document.defaultView && document.defaultView.getComputedStyle)
+			return document.defaultView.getComputedStyle(node, null)[propName];
+		if (node.currentStyle)
+			return node.currentStyle[propName];
+		return "";
+	}
+	
+	// Handles the inner H6 and DIV elements.
+	function setChildStyle(style)
+	{
+		if (_borderWidth != 0)
+		{
+			style.borderLeftWidth = style.borderRightWidth = _borderWidth + "px";
+			style.borderLeftStyle = style.borderRightStyle = _borderStyle;
+			style.borderLeftColor = style.borderRightColor = _borderColor;
+		}
+		style.margin = "0";
+		style.overflow = "hidden";
+		style.zoom = "1"; // fix IE "hasLayout" bug
+	}
+	// Injects the 5 elements that will round the top or bottom.
+	function round(doTop, roundLeft, roundRight)
+	{
+		var style;
+		var marginMultiplier = (_borderWidth == 0 ? 1 : _borderWidth);
+		var marginLR = [1, 1, 2, 3, 5]; // one for each value of idx
+		var borderLR = [1, 1, 1, 2, 0]; // one for each value of idx
+		for (var idx = 0; idx < 5; ++idx)
+		{
+			if (doTop)
+			{
+				style = _cntrNode.insertBefore(document.createElement("span"), _cntrNode.firstChild).style;
+				style.backgroundColor = ((_borderWidth != 0 && idx == 4) ? _borderColor : getStyle(_headerNode, "backgroundColor"));
+			}
+			else
+			{
+				style = _cntrNode.appendChild(document.createElement("span")).style;
+				style.backgroundColor = ((_borderWidth != 0 && idx == 4) ? _borderColor : getStyle(_bodyNode, "backgroundColor"));
+			}
+			style.display  = "block"; // because it's a span.
+			style.fontSize = "0"; // for IE
+			style.overflow = "hidden"; // for IE
+			style.height   = (_borderWidth == 0 ? 1 : _borderWidth) + "px";
+			style.marginTop = style.marginBottom = "0";
+			style.marginLeft  = (marginLR[idx] * marginMultiplier * roundLeft)  + "px";
+			style.marginRight = (marginLR[idx] * marginMultiplier * roundRight) + "px";
+			style.borderLeftStyle = style.borderRightStyle = _borderStyle;
+			style.borderLeftColor = style.borderRightColor = _borderColor;
+			style.borderLeftWidth = style.borderRightWidth = (borderLR[idx] * _borderWidth) + "px";
+		}
+	}
+
+	// The container's border was just a way to communicate the visible border; lose it.
+	function setContainerStyle()
+	{
+		_cntrNode.style.borderLeftWidth = _cntrNode.style.borderRightWidth = _cntrNode.style.borderTopWidth = _cntrNode.style.borderBottomWidth = "0";
+	}
+
+	////////////////////////////////////////////////////////////////////////
+	if (!(document.getElementsByTagName && document.createElement)) return;
+	if (!className) return;
+	if (null == tl) tl = true;
+	if (null == tr) tr = true;
+	if (null == bl) bl = true;
+	if (null == br) br = true;
+
+	var _cntrNode, _headerNode, _bodyNode, _borderWidth, _borderStyle, _borderColor; // I'm only regarding these as private even though everything in this method is.
+	var nodes = getElementsByClassName(className);
+	for (var idx = 0; idx < nodes.length; ++idx)
+	{
+		_cntrNode   = nodes[idx];
+		_headerNode = getFirstChild(_cntrNode, "H6");
+		_bodyNode   = getFirstChild(_cntrNode, "DIV");
+		if (!_headerNode)
+			_headerNode = _bodyNode;
+		// It makes no sense to have different settings for each border, so pick one and use for all.
+		_borderWidth = parseInt(getStyle(_cntrNode, "borderTopWidth")); // strip the units; we'll force "px".
+		_borderStyle = getStyle(_cntrNode, "borderTopStyle");
+		_borderColor = getStyle(_cntrNode, "borderTopColor");
+		if (isNaN(_borderWidth))
+			_borderWidth = 0;
+
+		if (_headerNode != _bodyNode)
+			setChildStyle(_headerNode.style);
+		setChildStyle(_bodyNode.style);
+		round(true,  (tl?1:0), (tr?1:0));
+		round(false, (bl?1:0), (br?1:0));
+		setContainerStyle();
+	}
+}
+

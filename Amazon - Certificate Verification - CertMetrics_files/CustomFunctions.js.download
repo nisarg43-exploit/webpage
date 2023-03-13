@@ -1,0 +1,370 @@
+﻿//this is a public variable that gets set on any radgrid drop down when it's filtered
+var filterColName;
+//this function sets the filterColName
+function SetFilterCol(name)
+{
+	filterColName = name;
+}
+
+//this function takes in a div id and hides or shows the div
+//it also takes in the id of the element that fired it and sets the 
+//html to + or -
+function setArrow(elemId)
+{
+	var arrow = _appThemePath + "/arrowUp.png";
+	var elem = $("#" + elemId);
+	if (elem != null)
+	{
+		elem.attr("src", arrow);
+	}
+} //setArrow
+
+//this function takes in a div id and hides or shows the div
+//it also takes in the id of the element that fired it and sets the 
+//html to + or -
+function hideDiv(divId, elemId)
+{
+	$("#" + divId).slideToggle(0);
+
+	var arrow = _appThemePath + "/arrow";
+
+	var elem = $("#" + elemId + "Image");
+
+	(elem.attr("src") == arrow + "Down.png") ? elem.attr("src", arrow + "Up.png") : elem.attr("src", arrow + "Down.png");
+
+} //hideDiv
+
+
+
+//this function takes in the master table view, a column id, 
+//and the args from a filter method and filterst he table
+function filterGridOnDrop(tableView, colId, args)
+{
+	if (args.get_item().get_value() != -1)
+	{
+		tableView.filter(colId, args.get_item().get_value(), "EqualTo");
+	}
+	else
+	{
+		tableView.filter(colId, "-1", "NoFilter");
+	}
+}
+
+function OnClientSeriesHovered(sender, args)
+{
+	//removes the document handler to avoid the fact that
+	//the event bubbles to the body and the browser will reset the cursor
+	document.onmouseover = null;
+	setTimeout(function ()
+	{
+		document.body.style.cursor = "pointer"
+	}, 50);
+
+	$("#" + sender.get_id()).mouseout(function () { document.body.style.cursor = "default" });
+	return false;
+}
+
+function removePointer()
+{
+	document.body.style.cursor = "default";
+}
+
+//this function takes in a rad grid client id, a check box control, and a gridcheckboxcolumn unique name
+//it will then check all the check boxes in the GCB based on whether or not the sender is checked
+function CheckAllGridCbs(gridId, sender, cbColName)
+{
+	var grid = $find(gridId);
+
+
+	var masterTableView = grid.get_masterTableView();
+	if (masterTableView != null)
+	{
+		var gridItems = masterTableView.get_dataItems();
+		var i;
+		for (i = 0; i < gridItems.length; ++i)
+		{
+			var gridItem = gridItems[i];
+			var cell = gridItem.get_cell(cbColName);
+			var controlsArray = cell.getElementsByTagName('input');
+			if (controlsArray.length > 0)
+			{
+				var rdo = controlsArray[0];
+				rdo.checked = sender.checked;
+			}
+		}
+	}
+}
+
+
+
+//this function scrolls the window to the top
+function scrollToTop(sender, args)
+{
+	//we have to set a timeout because the ajax stuff maintains it's scroll positioin and will actually jump back down,
+	//so we set the timeout and this fires after the ajax stuff has set it's scroll position. 
+	setTimeout(function () { window.scroll(0, 0); });
+}
+
+//this function will either hide or show a div
+//depending on it's current state
+function fadeToggleDiv(divId)
+{
+
+	//need to talk to granger about fix.
+	$("#" + divId).fadeToggle("medium", function () { });
+
+}
+
+//we keep this variable and set it to the timeout functions
+//that way we can clear it in closePopUp if need be
+//this is so a person doesn't click x on the pop up, and open another one
+//in the time the timeout is still going, as it would close the box early
+var popTimeout;
+
+//this function shows the pop up message div and sets the proper html, 
+//based on what message type you pass in. 
+function showPopup(message)
+{
+	// Default to 8 seconds; up that timeout based on the message size.
+	// That message size has been adjusted to include all of the HTML wrapping the message to display. (An estimation of about 160 HTML characters, based on counting what is sent in.)
+	var timeoutLength;
+	if (message === undefined || message.length <= 180)
+		timeoutLength = 8000;
+	else if (message.length > 180 && message.length <= 210)
+		timeoutLength = 12000;
+	else
+		timeoutLength = 15000;
+
+	$("#popUpDiv").html(message);
+	$("#popUpDiv").fadeIn(600, function ()
+	{
+		popTimeout = setTimeout("$(\"#popUpDiv\").fadeOut(200)", timeoutLength);
+	});
+}
+function closePopUp()
+{
+	$("#popUpDiv").hide();
+	clearTimeout(popTimeout);
+}
+
+function ToggleHelpPdfsDiv()
+{
+
+	$("#helpPdfDiv").slideToggle(250, function () { });
+}
+
+//*****************************************************************************
+//functions for row selecting to work
+//*****************************************************************************
+var originalClickedRowState = null;
+var clickedRow = null;
+
+function rgGrid_OnRowClick(sender, args)
+{
+	clickedRow = args.get_gridDataItem();
+	originalClickedRowState = args.get_gridDataItem().get_selected();
+}
+
+function rgGrid_OnRowDeselecting(sender, args)
+{
+	if (clickedRow != null && clickedRow != args.get_gridDataItem())
+	{
+		args.set_cancel(true);
+	}
+}
+
+function rgGrid_OnRowSelecting(sender, args)
+{
+	if (clickedRow == args.get_gridDataItem() && originalClickedRowState)
+	{
+		args.set_cancel(true);
+		originalClickedRowState = null;
+		clickedRow = null;
+	}
+}
+
+function rgGrid_OnRowSelected(sender, args)
+{
+	originalClickedRowState = null;
+	clickedRow = null;
+}
+
+//********************************************************************************
+//end of row selecting functions
+//********************************************************************************
+
+//this function will select all the text in a text box when the user clicks in it
+//to call it, just pass in the text box itself (usually this) or a dom object of it
+//either something like <asp:textbox onclick="javascript:SelectAllText(this)"
+//or <textbox id='someId' onclick="javascript:SelectAllText(document.getElementById('someId'))"
+function selectAllText(obj) {
+	obj.focus();
+	obj.select();
+}
+
+//********************************************************************************
+//functions for checking 512 chars in a text box
+//you call it like so onkeyup="return validateLimit(this, 'divId', 512)"
+//where divId is the id of the div you want the output to go, and 512 is the char limit
+//********************************************************************************
+
+function validateLimit(obj, divID, maxchar) {
+
+	objDiv = get_object(divID);
+
+	if (this.id) obj = this;
+
+	var remaningChar = maxchar - trimEnter(obj.value).length;
+
+	if (objDiv.id) {
+		objDiv.innerHTML = remaningChar + " characters left";
+	}
+	if (remaningChar <= 0) {
+		obj.value = obj.value.substring(maxchar, 0);
+		if (objDiv.id) {
+			objDiv.innerHTML = "0 characters left";
+		}
+		return false;
+	}
+	else
+	{ return true; }
+}
+
+function get_object(id) {
+	var object = null;
+	if (document.layers) {
+		object = document.layers[id];
+	}
+	else if (document.all) {
+		object = document.all[id];
+	}
+	else if (document.getElementById) {
+		object = document.getElementById(id);
+	}
+	return object;
+}
+//http://lawrence.ecorp.net/inet/samples/regexp-format.php#convert
+function trimEnter(dataStr) {
+	return dataStr.replace(/(\r\n|\r|\n)/g, "");
+}
+
+function expandCollapseAllLogicTreeNodes(idRadTree, idImg)
+{
+	var treeView = $find(idRadTree);
+	if (treeView != null)
+	{
+		var isRoot = false;
+		var nodes = treeView.get_allNodes();
+
+		// Telerik Rad Tree Nodes don't know if they are items, requirements, or folders.
+		// First pass through the nodes: any level greater than a 1? Than we have sub-folders!
+		// If there are no sub-folders, then allow the expand/collapse to work on the requirement nodes.
+		for (var i = 0; i < nodes.length; i++)
+		{
+			var level = nodes[i].get_level();
+			if (level != null && level > 1)
+			{
+				isRoot = true;
+				break;
+			}
+		}
+
+		// Second pass through the nodes: do the actual expand/collapse.
+		for (var i = 0; i < nodes.length; i++)
+		{
+			if (isRoot)
+				isRoot = false;
+			else
+			{
+				if (nodes[i].get_nodes() != null)
+				{
+					// Using an own property. Doesn't matter if the variable is set or not; the ELSE clause will handle things if the property is undefined.
+					if (treeView.cmExpandAll == "Expand")
+						nodes[i].expand();
+					else
+						nodes[i].collapse();
+				}
+			}
+		}
+
+		var img = $("#" + idImg);
+		if (img != null)
+		{
+			if (treeView.cmExpandAll == "Expand")
+			{
+				treeView.cmExpandAll = "Collapse";
+				img.attr("src", _appThemePath + "/arrowDown.png");
+			}
+			else
+			{
+				treeView.cmExpandAll = "Expand";
+				img.attr("src", _appThemePath + "/arrowUp.png");
+			}
+		}
+	}
+}
+
+//you can pass in the id of any element and this will select all of the text within that element.
+function fnSelect(objId)
+{
+	fnDeSelect();
+	if (document.selection)
+	{
+		var range = document.body.createTextRange();
+		range.moveToElementText(document.getElementById(objId));
+		range.select();
+	}
+	else if (window.getSelection)
+	{
+		var range = document.createRange();
+		range.selectNode(document.getElementById(objId));
+		window.getSelection().addRange(range);
+	}
+}
+
+//this is just used by the fnSelect function to clear any highlighted text
+function fnDeSelect()
+{
+	if (document.selection) document.selection.empty();
+	else if (window.getSelection)
+		window.getSelection().removeAllRanges();
+}
+
+//#################################################################################################
+//do not edit this unless you absolutely know what you're doing. this is to prevent click jacking attempts
+// This is for when our global X-Frame-Options header isn't respected.
+if (self == top)
+{
+	var theBody = document.getElementsByTagName('body')[0]
+	theBody.style.display = "block"
+} else
+{
+	top.location = self.location
+}
+
+//###############################################################################################
+//used to remove values that firefox automatically fills
+// this brutally clears a password field in firefox
+// compliments of verysimple.com
+function clearTextBox(id)
+{
+	if (document.getElementById)
+	{
+		var obj = document.getElementById(id);
+		if (obj != null)
+		{
+			obj.value = '';
+			obj.style.color = "black";
+		}
+	}
+}
+
+//use to check all checkboxes in a repeater
+function rptCheckAllCbs(selectAllCheckbox, checkboxId) {
+	for (var i = 0; i < document.forms[0].elements.length; i++) {
+		var e = document.forms[0].elements[i];
+		if ((e.type == 'checkbox') && (e.name.endsWith(checkboxId) != 0)) {
+			e.checked = selectAllCheckbox.checked;
+		}
+	}
+}
